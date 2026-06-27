@@ -15,7 +15,43 @@ VALUES (
   10000
 ) ON CONFLICT (slug) DO NOTHING;
 
--- 2. Create sample admin and sender profiles
+-- 2. Create dummy auth users first to satisfy foreign key constraint on profiles
+INSERT INTO auth.users (
+  id,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  raw_app_meta_data,
+  raw_user_meta_data,
+  created_at,
+  updated_at,
+  role,
+  aud
+) VALUES (
+  '22222222-2222-2222-2222-222222222222',
+  'admin@acme.com',
+  '$2a$10$tQ3m2o5q61m4N87c4r7O/.z/7x1m4N87c4r7O/.z/7x1m4N87c4rO',
+  now(),
+  '{"provider":"email","providers":["email"]}'::jsonb,
+  '{}'::jsonb,
+  now(),
+  now(),
+  'authenticated',
+  'authenticated'
+), (
+  '33333333-3333-3333-3333-333333333333',
+  'sender@acme.com',
+  '$2a$10$tQ3m2o5q61m4N87c4r7O/.z/7x1m4N87c4r7O/.z/7x1m4N87c4rO',
+  now(),
+  '{"provider":"email","providers":["email"]}'::jsonb,
+  '{}'::jsonb,
+  now(),
+  now(),
+  'authenticated',
+  'authenticated'
+) ON CONFLICT (id) DO NOTHING;
+
+-- 3. Create sample admin and sender profiles
 -- Note: Replace these UUIDs with real auth.users IDs if integrating with Supabase Auth
 INSERT INTO profiles (id, business_id, email, name, role, status, permissions)
 VALUES (
@@ -40,7 +76,7 @@ VALUES (
   '{}'
 ) ON CONFLICT (id) DO NOTHING;
 
--- 3. Create active subscription
+-- 4. Create active subscription
 INSERT INTO subscriptions (business_id, plan, status, emails_used, emails_limit, ai_tokens_used, ai_tokens_limit)
 VALUES (
   '11111111-1111-1111-1111-111111111111',
@@ -52,7 +88,7 @@ VALUES (
   100000
 ) ON CONFLICT (business_id) DO NOTHING;
 
--- 4. Create sample templates
+-- 5. Create sample templates
 INSERT INTO templates (id, business_id, created_by, name, subject, body, variables, is_shared)
 VALUES (
   '44444444-4444-4444-4444-444444444444',
@@ -65,7 +101,7 @@ VALUES (
   TRUE
 ) ON CONFLICT (id) DO NOTHING;
 
--- 5. Create some sample contacts
+-- 6. Create some sample contacts
 INSERT INTO contacts (id, business_id, email, name, company, title, is_vip, vip_score, tags)
 VALUES 
   (gen_random_uuid(), '11111111-1111-1111-1111-111111111111', 'elon@tesla.com', 'Elon Musk', 'Tesla', 'CEO', TRUE, 95, ARRAY['tech', 'automotive']),
@@ -73,7 +109,7 @@ VALUES
   (gen_random_uuid(), '11111111-1111-1111-1111-111111111111', 'sundar@google.com', 'Sundar Pichai', 'Google', 'CEO', TRUE, 92, ARRAY['search', 'ai'])
 ON CONFLICT (business_id, email) DO NOTHING;
 
--- 6. Setup default sender policy for the sender
+-- 7. Setup default sender policy for the sender
 INSERT INTO sender_policies (business_id, sender_id, admin_id, can_use_attachments, max_emails_per_day, allowed_file_types, max_attachment_size_mb, can_override_dedup)
 VALUES (
   '11111111-1111-1111-1111-111111111111',
@@ -86,7 +122,7 @@ VALUES (
   FALSE
 ) ON CONFLICT (sender_id) DO NOTHING;
 
--- 7. Add daily analytics snapshot for yesterday and today
+-- 8. Add daily analytics snapshot for yesterday and today
 INSERT INTO analytics_snapshots (business_id, snapshot_date, period, emails_sent, emails_failed, emails_opened, emails_clicked, emails_replied, emails_bounced, ai_tokens_used, ai_cost_usd, active_senders)
 VALUES 
   ('11111111-1111-1111-1111-111111111111', CURRENT_DATE - 1, 'daily', 50, 2, 25, 10, 5, 0, 1200, 0.0024, 1),

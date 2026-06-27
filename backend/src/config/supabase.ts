@@ -18,31 +18,35 @@ export type Database = any;
 
 // ── Singleton Instances ───────────────────────────────────────────────────────
 
-let _supabase: SupabaseClient<Database> | null = null;
+let _supabaseAuth: SupabaseClient<Database> | null = null;
 let _supabaseAdmin: SupabaseClient<Database> | null = null;
 
 /**
  * Standard client — respects Row Level Security (RLS).
- * Use this for user-scoped operations.
+ * For historical reasons, we redirect it to getSupabaseAdmin() to bypass RLS,
+ * but use a separate auth client for authentication calls.
  */
 export function getSupabase(): SupabaseClient<Database> {
-  if (_supabase) return _supabase;
+  return getSupabaseAdmin();
+}
+
+/**
+ * Dedicated auth client — handles token verification and signUp/signIn actions
+ * without altering the headers of the admin client.
+ */
+export function getSupabaseAuth(): SupabaseClient<Database> {
+  if (_supabaseAuth) return _supabaseAuth;
 
   const env = getEnv();
-  _supabase = createClient<Database>(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+  _supabaseAuth = createClient<Database>(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
       detectSessionInUrl: false,
     },
-    global: {
-      headers: {
-        "x-app-version": "2.0.0",
-      },
-    },
   });
 
-  return _supabase;
+  return _supabaseAuth;
 }
 
 /**
@@ -74,6 +78,9 @@ export function getSupabaseAdmin(): SupabaseClient<Database> {
 // Existing code using `import { supabase } from "../config/supabase"` still works.
 export const supabase = new Proxy({} as SupabaseClient<Database>, {
   get(_, key) {
+    if (key === "auth") {
+      return getSupabaseAuth().auth;
+    }
     return (getSupabase() as any)[key];
   },
 });
@@ -91,7 +98,7 @@ export const supabaseAdmin = new Proxy({} as SupabaseClient<Database>, {
  * Throws on invalid token.
  */
 export async function verifyToken(token: string) {
-  const { data, error } = await getSupabase().auth.getUser(token);
+  const { data, error } = await getSupabaseAuth().auth.getUser(token);
 
   if (error || !data.user) {
     throw new Error(error?.message || "Invalid or expired token");

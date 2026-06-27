@@ -161,6 +161,45 @@ export class SenderService {
       message: `Enqueued ${total} cold outreach emails for delivery.`,
     };
   }
+
+  /**
+   * Retrieves email logs for a specific sender.
+   */
+  async getLogs(senderId: string) {
+    const supabase = getSupabase();
+
+    // Fetch sender profile name
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("name")
+      .eq("id", senderId)
+      .single();
+
+    const senderName = profile?.name || "Assigned Sender";
+
+    // Query email logs for this sender
+    const { data: logs, error } = await supabase
+      .from("email_logs")
+      .select("*")
+      .eq("sender_id", senderId)
+      .order("timestamp", { ascending: false });
+
+    if (error) throw error;
+
+    return (logs || []).map((l: any) => ({
+      id: l.id,
+      sender_id: l.sender_id,
+      sender_name: senderName,
+      recipient_email: l.recipient_email,
+      recipient_name: l.recipient_name,
+      subject: l.subject,
+      body: l.body,
+      status: l.status,
+      error_message: l.error_message,
+      timestamp: l.timestamp,
+    }));
+  }
 }
 
 export const senderService = new SenderService();
+

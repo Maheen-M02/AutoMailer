@@ -3,7 +3,7 @@
  */
 
 import { adminRepository } from "./admin.repository.js";
-import { getSupabase, getSupabaseAdmin } from "../../config/supabase.js";
+import { getSupabase, getSupabaseAdmin, getSupabaseAuth } from "../../config/supabase.js";
 import { encrypt } from "../../shared/crypto.js";
 import { AppError, NotFoundError } from "../../shared/errors.js";
 import { logger } from "../../shared/logger.js";
@@ -101,7 +101,7 @@ export class AdminService {
       }
       newUserId = authUser.user.id;
     } else {
-      const { data: authUser, error: authErr } = await getSupabase().auth.signUp({
+      const { data: authUser, error: authErr } = await getSupabaseAuth().auth.signUp({
         email,
         password,
         options: {
@@ -191,14 +191,14 @@ export class AdminService {
 
     return logs.map((l: any) => ({
       id: l.id,
-      senderId: l.sender_id,
-      senderName: senderMap.get(l.sender_id) || "Assigned Sender",
-      recipientEmail: l.recipient_email,
-      recipientName: l.recipient_name,
+      sender_id: l.sender_id,
+      sender_name: senderMap.get(l.sender_id) || "Assigned Sender",
+      recipient_email: l.recipient_email,
+      recipient_name: l.recipient_name,
       subject: l.subject,
       body: l.body,
       status: l.status,
-      errorMessage: l.error_message,
+      error_message: l.error_message,
       timestamp: l.timestamp,
     }));
   }

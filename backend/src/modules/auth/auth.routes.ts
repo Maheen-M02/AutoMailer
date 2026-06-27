@@ -4,7 +4,7 @@
 
 import { Router, type Response } from "express";
 import { validate } from "../../middleware/requestValidator.js";
-import { LoginSchema } from "./auth.schema.js";
+import { LoginSchema, SignupSchema } from "./auth.schema.js";
 import { authService } from "./auth.service.js";
 import { sendSuccess, sendError } from "../../shared/response.js";
 import type { Request } from "express";
@@ -27,6 +27,27 @@ router.post(
         err.statusCode || 400,
         err.code || "LOGIN_ERROR",
         err.message || "Invalid email or password."
+      );
+    }
+  }
+);
+
+// POST /auth/signup
+router.post(
+  "/signup",
+  validate(SignupSchema),
+  async (req: Request, res: Response) => {
+    const { email, password, name, businessName } = req.body;
+
+    try {
+      const result = await authService.signup(email, password, name, businessName);
+      return sendSuccess(res, result);
+    } catch (err: any) {
+      return sendError(
+        res,
+        err.statusCode || 400,
+        err.code || "SIGNUP_ERROR",
+        err.message || "Registration failed."
       );
     }
   }

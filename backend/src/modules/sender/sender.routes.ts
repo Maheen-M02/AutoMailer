@@ -52,4 +52,17 @@ router.post(
   }
 );
 
+// GET /sender/logs — Get logs for the authenticated sender
+router.get("/logs", async (req: AuthenticatedRequest, res: Response) => {
+  const senderId = req.user!.userId;
+
+  try {
+    const logs = await senderService.getLogs(senderId);
+    return sendSuccess(res, logs);
+  } catch (err: any) {
+    return sendError(res, 500, "FETCH_ERROR", err.message || "Failed to retrieve email logs.");
+  }
+});
+
 export default router;
+

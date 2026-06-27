@@ -593,14 +593,14 @@ router.get("/logs", async (req: AuthenticatedRequest, res: Response) => {
     // Format logs for frontend (matching the structure from mock logs)
     const formattedLogs = (logs || []).map((l) => ({
       id: l.id,
-      senderId: l.sender_id,
-      senderName: senderMap.get(l.sender_id) || "Assigned Sender",
-      recipientEmail: l.recipient_email,
-      recipientName: l.recipient_name,
+      sender_id: l.sender_id,
+      sender_name: senderMap.get(l.sender_id) || "Assigned Sender",
+      recipient_email: l.recipient_email,
+      recipient_name: l.recipient_name,
       subject: l.subject,
       body: l.body,
       status: l.status,
-      errorMessage: l.error_message,
+      error_message: l.error_message,
       timestamp: l.timestamp
     }));
 

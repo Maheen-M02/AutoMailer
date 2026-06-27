@@ -7,21 +7,23 @@ const ThemeCtx = createContext<{ theme: Theme; toggle: () => void }>({
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setTheme] = useState<Theme>("dark");
 
   useEffect(() => {
-    const stored = (localStorage.getItem("am-theme") as Theme | null) ?? "light";
+    const stored = (localStorage.getItem("am-theme-v2") as Theme | null) ?? "dark";
     setTheme(stored);
   }, []);
 
   useEffect(() => {
     const root = document.documentElement;
     root.classList.toggle("dark", theme === "dark");
-    localStorage.setItem("am-theme", theme);
+    localStorage.setItem("am-theme-v2", theme);
   }, [theme]);
 
   return (
-    <ThemeCtx.Provider value={{ theme, toggle: () => setTheme((t) => (t === "dark" ? "light" : "dark")) }}>
+    <ThemeCtx.Provider
+      value={{ theme, toggle: () => setTheme((t) => (t === "dark" ? "light" : "dark")) }}
+    >
       {children}
     </ThemeCtx.Provider>
   );

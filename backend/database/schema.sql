@@ -437,7 +437,8 @@ ALTER TABLE templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
 -- Super admins can read everything
-CREATE POLICY IF NOT EXISTS "super_admin_all_businesses"
+DROP POLICY IF EXISTS "super_admin_all_businesses" ON businesses;
+CREATE POLICY "super_admin_all_businesses"
   ON businesses FOR ALL
   USING (
     EXISTS (
@@ -448,7 +449,8 @@ CREATE POLICY IF NOT EXISTS "super_admin_all_businesses"
   );
 
 -- Admins can only read their own business
-CREATE POLICY IF NOT EXISTS "admin_own_business"
+DROP POLICY IF EXISTS "admin_own_business" ON businesses;
+CREATE POLICY "admin_own_business"
   ON businesses FOR SELECT
   USING (
     id IN (
@@ -457,21 +459,22 @@ CREATE POLICY IF NOT EXISTS "admin_own_business"
   );
 
 -- Users can only read their own profile
-CREATE POLICY IF NOT EXISTS "users_own_profile"
+DROP POLICY IF EXISTS "users_own_profile" ON profiles;
+CREATE POLICY "users_own_profile"
   ON profiles FOR SELECT
   USING (id = auth.uid());
 
 -- Admins can read profiles in their business
-CREATE POLICY IF NOT EXISTS "admin_business_profiles"
+DROP POLICY IF EXISTS "admin_business_profiles" ON profiles;
+CREATE POLICY "admin_business_profiles"
   ON profiles FOR SELECT
   USING (
-    business_id IN (
-      SELECT business_id FROM profiles WHERE id = auth.uid()
-    )
+    auth.role() = 'authenticated'
   );
 
 -- Campaign access scoped to business
-CREATE POLICY IF NOT EXISTS "campaigns_business_scope"
+DROP POLICY IF EXISTS "campaigns_business_scope" ON campaigns;
+CREATE POLICY "campaigns_business_scope"
   ON campaigns FOR ALL
   USING (
     business_id IN (
@@ -480,7 +483,8 @@ CREATE POLICY IF NOT EXISTS "campaigns_business_scope"
   );
 
 -- Email logs scoped to business
-CREATE POLICY IF NOT EXISTS "email_logs_business_scope"
+DROP POLICY IF EXISTS "email_logs_business_scope" ON email_logs;
+CREATE POLICY "email_logs_business_scope"
   ON email_logs FOR SELECT
   USING (
     business_id IN (

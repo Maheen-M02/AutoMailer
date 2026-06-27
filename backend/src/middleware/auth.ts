@@ -9,7 +9,7 @@
  */
 
 import type { Request, Response, NextFunction } from "express";
-import { getSupabase } from "../config/supabase.js";
+import { getSupabase, getSupabaseAdmin, getSupabaseAuth } from "../config/supabase.js";
 import { InvalidTokenError, ForbiddenError, UnauthorizedError } from "../shared/errors.js";
 import type { AuthenticatedRequest, TenantContext } from "../shared/types.js";
 import type { Role } from "../config/constants.js";
@@ -72,8 +72,8 @@ export async function requireAuth(
   }
 
   try {
-    // 1. Verify JWT with Supabase Auth
-    const { data: { user }, error } = await getSupabase().auth.getUser(token);
+    // 1. Verify JWT with Supabase Auth (using separate auth client)
+    const { data: { user }, error } = await getSupabaseAuth().auth.getUser(token);
 
     if (error || !user) {
       return next(new InvalidTokenError(error?.message || "Invalid or expired token"));
@@ -83,8 +83,8 @@ export async function requireAuth(
     let tenantContext = getCachedProfile(user.id);
 
     if (!tenantContext) {
-      // 3. Fetch profile + business data from DB
-      const { data: profile, error: profileErr } = await getSupabase()
+      // 3. Fetch profile + business data from DB (use admin client to bypass RLS in auth middleware)
+      const { data: profile, error: profileErr } = await getSupabaseAdmin()
         .from("profiles")
         .select(`
           id,
@@ -101,7 +101,7 @@ export async function requireAuth(
         .single();
 
       if (profileErr || !profile) {
-        logger.warn({ userId: user.id }, "Profile not found during auth");
+        logger.warn({ userId: user.id, err: profileErr?.message }, "Profile not found during auth");
         return next(new ForbiddenError("Profile not found. Please contact your administrator."));
       }
 
@@ -112,7 +112,7 @@ export async function requireAuth(
 
       // 5. If profile has a business, check if business is suspended
       if (profile.business_id) {
-        const { data: business } = await getSupabase()
+        const { data: business } = await getSupabaseAdmin()
           .from("businesses")
           .select("status, suspended_reason")
           .eq("id", profile.business_id)
@@ -148,7 +148,7 @@ export async function requireAuth(
     (req as AuthenticatedRequest).token = token;
 
     // 7. Update last_active_at asynchronously (don't block the request)
-    const updatePromise = getSupabase()
+    const updatePromise = getSupabaseAdmin()
       .from("profiles")
       .update({ last_active_at: new Date().toISOString() })
       .eq("id", user.id);

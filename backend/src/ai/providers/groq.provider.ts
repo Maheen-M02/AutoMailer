@@ -34,7 +34,10 @@ export class GroqProvider extends BaseAIProvider {
     if (this._client) return this._client;
     const apiKey = getEnv().GROQ_API_KEY;
     if (!apiKey) throw new Error("GROQ_API_KEY is not configured");
-    this._client = new Groq({ apiKey });
+    this._client = new Groq({
+      apiKey,
+      fetch: globalThis.fetch as any
+    });
     return this._client;
   }
 

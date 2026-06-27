@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as LandingRouteImport } from './routes/landing'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSuperAdminRouteImport } from './routes/_authenticated/super-admin'
@@ -30,6 +31,11 @@ const OnboardingRoute = OnboardingRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LandingRoute = LandingRouteImport.update({
+  id: '/landing',
+  path: '/landing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
@@ -87,6 +93,7 @@ const AuthenticatedAdminCsvRoute = AuthenticatedAdminCsvRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/landing': typeof LandingRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/super-admin': typeof AuthenticatedSuperAdminRoute
@@ -100,6 +107,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/landing': typeof LandingRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/super-admin': typeof AuthenticatedSuperAdminRoute
@@ -115,6 +123,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/landing': typeof LandingRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/_authenticated/super-admin': typeof AuthenticatedSuperAdminRoute
@@ -130,6 +139,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/landing'
     | '/login'
     | '/onboarding'
     | '/super-admin'
@@ -143,6 +153,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/landing'
     | '/login'
     | '/onboarding'
     | '/super-admin'
@@ -157,6 +168,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/landing'
     | '/login'
     | '/onboarding'
     | '/_authenticated/super-admin'
@@ -172,6 +184,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  LandingRoute: typeof LandingRoute
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
 }
@@ -190,6 +203,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/landing': {
+      id: '/landing'
+      path: '/landing'
+      fullPath: '/landing'
+      preLoaderRoute: typeof LandingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -294,6 +314,7 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  LandingRoute: LandingRoute,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
 }

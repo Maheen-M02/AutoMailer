@@ -9,7 +9,7 @@ const router = Router();
 router.use(requireAuth); // Requires authentication for any AI requests
 
 const groqKey = process.env.GROQ_API_KEY;
-const groq = groqKey ? new Groq({ apiKey: groqKey }) : null;
+const groq = groqKey ? new Groq({ apiKey: groqKey, fetch: globalThis.fetch as any }) : null;
 
 // Helper fallback generators in case Groq is unavailable
 function fallbackGenerate(brief: string, recipient: any): string {
@@ -59,19 +59,26 @@ router.post("/generate", async (req: AuthenticatedRequest, res: Response) => {
     const company = recipient.company || recipient.Company || "their company";
     const title = recipient.title || recipient.Title || recipient.Role || "executive";
 
-    const prompt = `You are a professional, premium copywriter specializing in highly personalized B2B cold email marketing campaigns.
+    const prompt = `You are an elite B2B sales copywriter specializing in high-converting, relationship-first cold email campaigns.
 
-Task: Write a concise, compelling cold outreach email to a potential lead based on the following:
-- Outreach Brief/Goal: "${brief}"
-- Lead Name: "${name}"
-- Lead Company: "${company}"
-- Lead Job Title: "${title}"
+Task: Write a concise, conversational B2B cold outreach email template based on the following instructions:
+- Campaign Brief/Goal: "${brief}"
+- Target Persona Example:
+  - Lead Name: "${name}"
+  - Lead Company: "${company}"
+  - Lead Job Title: "${title}"
 
 Rules:
-1. Keep the email short (under 120 words).
-2. Avoid generic corporate jargon, fake warmth, and cheesy subject lines. 
-3. Write ONLY the email body itself. Do not write a Subject line, and do not include placeholder brackets or introductory conversation. Make the email feel completely hand-written.
-4. Structure it with natural spacing, a simple conversational tone, and a light call-to-action (e.g. asking for 5 minutes).`;
+1. **Placeholder Variables**: You MUST write the email as a reusable template. Use literal bracket variables:
+   - Use \`{name}\` where you would write the recipient's name (e.g., "Hi {name},").
+   - Use \`{company}\` where you would refer to their company name (e.g., "I was looking at {company}...").
+   - Use \`{title}\` where you would refer to their job title.
+   Do NOT hardcode the example values "${name}", "${company}", or "${title}" directly in the output. Instead, write \`{name}\`, \`{company}\`, and \`{title}\` in their place.
+2. **Target Persona Context**: Use the example lead name, company, and job title ONLY to understand the target industry, seniority level, and relevant business context so you can write a highly relevant pitch.
+3. **Conversational Tone**: Write like a real person sending a casual, thoughtful note to a colleague. Avoid all robotic AI/corporate phrases, such as "hope this email finds you well", "leverage", "uniquely positioned", "delighted to connect", "game-changing", "streamline", "robust", etc.
+4. **Length and Spacing**: Keep it under 100 words. Start directly with a low-key observation or point of interest. Use single-line breaks, short paragraphs (1-2 sentences max), and clean spacing.
+5. **Low-Friction Call to Action (CTA)**: End with a single, low-pressure question that requires minimal cognitive load to answer (e.g., "Worth a look?", "Open to a quick check next week?", "Would it make sense to chat for 5 mins?").
+6. **No Metadata**: Output ONLY the email body. Do not include subject lines, markdown code blocks, intro/outro chat, or comments. Start directly with the greeting.`;
 
     const chatCompletion = await groq.chat.completions.create({
       messages: [{ role: "user", content: prompt }],
@@ -145,12 +152,14 @@ router.post("/subjects", async (req: AuthenticatedRequest, res: Response) => {
   }
 
   try {
-    const prompt = `Analyze the following B2B sales email body and brainstorm exactly 5 high-converting, casual cold email subject lines.
+    const prompt = `You are a B2B conversion rate optimization expert. Analyze the following cold email body and brainstorm exactly 5 high-converting, casual cold email subject lines.
 
 Rules:
-1. Keep them extremely short (2 to 5 words).
-2. Avoid clickbait, capital letter spam, and standard sales hype. Use natural, lower-case styled headers (e.g. "quick question" or "help with [topic]").
-3. Output ONLY a valid JSON array of strings. Do not include chat intro, numbers, or explanation.
+1. **Style**: Use informal, conversational, lower-case styled headers (e.g., "quick question", "ideas for {company}", "crm logs", "{name} / quick question").
+2. **Length**: Keep them extremely short (1 to 4 words). Short subject lines get significantly higher open rates.
+3. **Variables**: Use the literal placeholder brackets \`{company}\` or \`{name}\` inside the subject line suggestions where appropriate, so that they can be dynamically personalized for each recipient. Do not hardcode specific recipient details.
+4. **Avoid Spam**: No capital letter spam, no clickbait, no cheesy sales hooks (e.g. "increase sales by 10x!").
+5. **Output**: Output ONLY a valid JSON object with key "subjects" containing an array of strings. Do not include chat intro, markdown formatting, or explanation.
 
 Email Body:
 ---

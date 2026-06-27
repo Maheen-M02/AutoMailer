@@ -14,6 +14,9 @@ import { getEmailQueue, getEmailScheduleQueue } from "./queue.registry.js";
 import type { EmailJobData } from "../shared/types.js";
 import { VIP_PRIORITY } from "../config/constants.js";
 import { logger } from "../shared/logger.js";
+import { getEnv } from "../config/env.js";
+import { getSupabaseAdmin } from "../config/supabase.js";
+import { processEmailData } from "../workers/email.worker.js";
 
 // ── Job Options Builder ───────────────────────────────────────────────────────
 
@@ -37,6 +40,23 @@ export async function enqueueEmail(
   data: EmailJobData,
   options: EnqueueEmailOptions = {}
 ): Promise<string> {
+  const env = getEnv();
+  if (!env.FEATURE_REDIS_ENABLED) {
+    const jobId = options.deduplicationId || `in_memory:${data.businessId}:${data.recipientEmail}:${Date.now()}`;
+    const delay = calculateDelay(options.scheduledFor, options.delayMs);
+    
+    // Process in the background staggered by delay
+    setTimeout(async () => {
+      try {
+        await processEmailData(data, 0, jobId);
+      } catch (err) {
+        logger.error({ err, recipient: data.recipientEmail }, "In-memory single email dispatch failed");
+      }
+    }, delay);
+
+    return jobId;
+  }
+
   const queue = getEmailQueue();
 
   const jobId = options.deduplicationId || `email:${data.businessId}:${data.recipientEmail}:${Date.now()}`;
@@ -88,15 +108,67 @@ export async function enqueueCampaignBatch(
     scheduledFor?: Date;
   } = {}
 ): Promise<{ jobIds: string[]; total: number }> {
-  const queue = getEmailQueue();
-  const { baseDelayMs = 0, scheduledFor } = options;
-
   // Sort recipients: VIP first, then by vipScore descending
   const sorted = [...recipients].sort((a, b) => {
     if (a.isVip && !b.isVip) return -1;
     if (!a.isVip && b.isVip) return 1;
     return (b.vipScore ?? 0) - (a.vipScore ?? 0);
   });
+
+  const env = getEnv();
+  const { baseDelayMs = 0, scheduledFor } = options;
+
+  if (!env.FEATURE_REDIS_ENABLED) {
+    logger.info("FEATURE_REDIS_ENABLED=false: Processing campaign batch in-memory in the background");
+    
+    // Start processing in the background (fire and forget from request thread to avoid blocking Express)
+    (async () => {
+      // Fetch the campaign_jobs we just inserted to get their IDs
+      const { data: dbJobs } = await getSupabaseAdmin()
+        .from("campaign_jobs")
+        .select("id, recipient_email")
+        .eq("campaign_id", campaignData.campaignId);
+
+      const jobMap = new Map(dbJobs?.map((j) => [j.recipient_email, j.id]) || []);
+
+      for (let index = 0; index < sorted.length; index++) {
+        const recipient = sorted[index];
+        const isVip = recipient.isVip ?? false;
+        const priority = isVip
+          ? VIP_PRIORITY.VIP
+          : Math.max(VIP_PRIORITY.NORMAL, Math.floor((recipient.vipScore ?? 0) / 10));
+
+        const delay = baseDelayMs + index * campaignData.delayBetweenEmailsMs!;
+        if (delay > 0) {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+
+        const emailJobId = jobMap.get(recipient.email);
+
+        const jobData: EmailJobData = {
+          ...campaignData,
+          jobType: "campaign_batch" as const,
+          recipientEmail: recipient.email,
+          recipientData: recipient.data,
+          priority,
+          campaignJobId: emailJobId,
+        };
+
+        try {
+          await processEmailData(jobData, 0, `in_memory:${campaignData.campaignId}:${recipient.email}`);
+        } catch (err) {
+          logger.error({ err, recipient: recipient.email }, "In-memory email dispatch failed");
+        }
+      }
+    })().catch((err) => logger.error({ err }, "In-memory campaign batch processing crashed"));
+
+    return {
+      jobIds: sorted.map((r) => `in_memory:${campaignData.campaignId}:${r.email}`),
+      total: sorted.length
+    };
+  }
+
+  const queue = getEmailQueue();
 
   const baseScheduleDelay = scheduledFor
     ? Math.max(0, scheduledFor.getTime() - Date.now())

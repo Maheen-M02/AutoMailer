@@ -20,6 +20,7 @@ interface AuthCtx {
   user: AuthUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<AuthUser>;
+  signup: (email: string, password: string, name: string, businessName?: string) => Promise<AuthUser>;
   logout: () => void;
   update: (patch: Partial<AuthUser>) => void;
 }
@@ -28,6 +29,9 @@ const Ctx = createContext<AuthCtx>({
   user: null,
   loading: true,
   login: async () => {
+    throw new Error("not ready");
+  },
+  signup: async () => {
     throw new Error("not ready");
   },
   logout: () => {},
@@ -40,8 +44,20 @@ const Ctx = createContext<AuthCtx>({
  */
 const MOCK_USERS: AuthUser[] = [
   { id: "u_super", email: "super@demo.io", name: "Platform Owner", role: "super_admin" },
-  { id: "u_admin", email: "admin@demo.io", name: "Acme Marketing", role: "admin", smtpConfigured: false },
-  { id: "u_sender", email: "sender@demo.io", name: "Jamie Sender", role: "sender", adminId: "u_admin" },
+  {
+    id: "u_admin",
+    email: "admin@demo.io",
+    name: "Acme Marketing",
+    role: "admin",
+    smtpConfigured: false,
+  },
+  {
+    id: "u_sender",
+    email: "sender@demo.io",
+    name: "Jamie Sender",
+    role: "sender",
+    adminId: "u_admin",
+  },
 ];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -52,7 +68,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) setUser(JSON.parse(raw));
-    } catch {}
+    } catch {
+      // Ignore reading storage errors on boot
+    }
     setLoading(false);
   }, []);
 
@@ -64,9 +82,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const res = await api.post("/auth/login", { email, password });
-    const { token, user } = res.data;
+    const { token, user } = res.data.data || res.data;
     localStorage.setItem("auto-mailer-token", token);
     persist(user);
+    return user;
+  };
+
+  const signup = async (email: string, password: string, name: string, businessName?: string) => {
+    const res = await api.post("/auth/signup", { email, password, name, businessName });
+    const { token, user } = res.data.data || res.data;
+    if (token) {
+      localStorage.setItem("auto-mailer-token", token);
+      persist(user);
+    }
     return user;
   };
 
@@ -80,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     persist({ ...user, ...patch });
   };
 
-  return <Ctx.Provider value={{ user, loading, login, logout, update }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ user, loading, login, signup, logout, update }}>{children}</Ctx.Provider>;
 }
 
 export const useAuth = () => useContext(Ctx);

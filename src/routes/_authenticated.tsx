@@ -12,8 +12,13 @@ function AuthLayout() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user) navigate({ to: "/login" });
-    else if (user.role === "admin" && !user.smtpConfigured) navigate({ to: "/onboarding" });
+    if (!user) {
+      navigate({ to: "/login" });
+    } else if (user.role === "admin" && !user.smtpConfigured) {
+      navigate({ to: "/onboarding" });
+    } else if (user.role === "sender" && window.location.pathname.includes("/admin")) {
+      navigate({ to: "/sender" });
+    }
   }, [user, loading, navigate]);
 
   if (loading || !user) {

@@ -45,14 +45,14 @@ export const PLAN_LIMITS = {
 // ── Queue Configuration ───────────────────────────────────────────────────────
 
 export const QUEUE_NAMES = {
-  EMAIL_SEND: "email:send",
-  EMAIL_SCHEDULE: "email:schedule",
-  EMAIL_DEAD_LETTER: "email:dead-letter",
-  AI_GENERATE: "ai:generate",
-  ANALYTICS_AGGREGATE: "analytics:aggregate",
-  BOUNCE_PROCESS: "bounce:process",
-  WEBHOOK_PROCESS: "webhook:process",
-  SCHEDULER: "scheduler:cron",
+  EMAIL_SEND: "email_send",
+  EMAIL_SCHEDULE: "email_schedule",
+  EMAIL_DEAD_LETTER: "email_dead_letter",
+  AI_GENERATE: "ai_generate",
+  ANALYTICS_AGGREGATE: "analytics_aggregate",
+  BOUNCE_PROCESS: "bounce_process",
+  WEBHOOK_PROCESS: "webhook_process",
+  SCHEDULER: "scheduler_cron",
 } as const;
 
 export const QUEUE_CONCURRENCY = {

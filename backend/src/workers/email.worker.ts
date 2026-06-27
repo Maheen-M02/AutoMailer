@@ -116,7 +116,11 @@ function interpolate(template: string, data: Record<string, any>): string {
 
 // ── Main Worker Processor ─────────────────────────────────────────────────────
 
-async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
+export async function processEmailData(
+  data: EmailJobData,
+  attemptsMade: number = 0,
+  jobId: string = "in_memory"
+): Promise<void> {
   const {
     businessId,
     campaignId,
@@ -128,20 +132,14 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
     subjectTemplate,
     bodyTemplate,
     senderOverride,
-    delayMs,
-  } = job.data;
+  } = data;
 
   workerLogger.info(
-    { jobId: job.id, recipientEmail, campaignId, attempt: job.attemptsMade },
-    "Processing email job"
+    { jobId, recipientEmail, campaignId, attempt: attemptsMade },
+    "Processing email job data"
   );
 
-  // 1. Natural delay to mimic human pacing (only on first attempt)
-  if (job.attemptsMade === 0 && delayMs && delayMs > 0) {
-    await new Promise((r) => setTimeout(r, delayMs));
-  }
-
-  // 2. Check deduplication
+  // 1. Check deduplication
   const isDuplicate = await isRecipientDuplicate(businessId, recipientEmail, senderOverride);
 
   if (isDuplicate) {
@@ -162,18 +160,18 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
       await updateCampaignJobStatus(campaignJobId, "skipped");
     }
 
-    workerLogger.debug({ jobId: job.id, recipientEmail }, "Email skipped (duplicate)");
+    workerLogger.debug({ jobId, recipientEmail }, "Email skipped (duplicate)");
     return; // Job "completed" successfully — it was intentionally skipped
   }
 
-  // 3. Get SMTP transporter
+  // 2. Get SMTP transporter
   const transporter = await getTransporter(adminId);
 
-  // 4. Interpolate templates
+  // 3. Interpolate templates
   const subject = interpolate(subjectTemplate, recipientData);
   const body = interpolate(bodyTemplate, recipientData);
 
-  // 5. Get sender's display name for From header
+  // 4. Get sender's display name for From header
   const { data: smtpConfig } = await getSupabase()
     .from("smtp_configs")
     .select("gmail")
@@ -183,7 +181,7 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
   const fromAddress = smtpConfig?.gmail || "noreply@automailer.com";
 
   try {
-    // 6. Send email
+    // 5. Send email
     await transporter.sendMail({
       from: `"${fromAddress}" <${fromAddress}>`,
       to: recipientEmail,
@@ -192,7 +190,7 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
       html: body.replace(/\n/g, "<br>"), // Basic HTML conversion
     });
 
-    // 7. Log success
+    // 6. Log success
     await logEmailResult({
       businessId,
       campaignId,
@@ -205,7 +203,7 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
       status: "sent",
     });
 
-    // 8. Record in deduplication table
+    // 7. Record in deduplication table
     await getSupabaseAdmin()
       .from("contact_dedup")
       .upsert(
@@ -220,16 +218,16 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
         { onConflict: "business_id, recipient_email" }
       );
 
-    // 9. Update campaign job status
+    // 8. Update campaign job status
     if (campaignJobId) {
       await updateCampaignJobStatus(campaignJobId, "sent");
     }
 
-    workerLogger.info({ jobId: job.id, recipientEmail }, "Email sent successfully");
+    workerLogger.info({ jobId, recipientEmail }, "Email sent successfully");
 
   } catch (sendErr: any) {
     workerLogger.error(
-      { jobId: job.id, err: sendErr, recipientEmail, attempt: job.attemptsMade },
+      { jobId, err: sendErr, recipientEmail, attempt: attemptsMade },
       "Email send failed"
     );
 
@@ -253,6 +251,14 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
 
     throw sendErr; // Re-throw for BullMQ retry logic
   }
+}
+
+async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
+  // Natural delay to mimic human pacing (only on first attempt)
+  if (job.attemptsMade === 0 && job.data.delayMs && job.data.delayMs > 0) {
+    await new Promise((r) => setTimeout(r, job.data.delayMs));
+  }
+  await processEmailData(job.data, job.attemptsMade, job.id!);
 }
 
 // ── Database Helpers ──────────────────────────────────────────────────────────

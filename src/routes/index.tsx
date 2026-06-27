@@ -12,7 +12,7 @@ function Index() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user) navigate({ to: "/login" });
+    if (!user) navigate({ to: "/landing" });
     else if (user.role === "admin" && !user.smtpConfigured) navigate({ to: "/onboarding" });
     else navigate({ to: roleHome(user.role) as "/admin" });
   }, [user, loading, navigate]);
