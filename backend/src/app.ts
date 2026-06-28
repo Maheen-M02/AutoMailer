@@ -39,7 +39,7 @@ export function createApp() {
 
   // ── Security Headers (Helmet) ───────────────────────────────────────────────
   app.use(
-    helmet({
+    (helmet as any)({
       contentSecurityPolicy: false, // Disable for API (no HTML)
       crossOriginEmbedderPolicy: false,
     })
