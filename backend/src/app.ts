@@ -57,7 +57,8 @@ export function createApp() {
         if (
           allowedOrigins.includes("*") ||
           allowedOrigins.includes(origin) ||
-          (env.NODE_ENV === "development" && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin))
+          (env.NODE_ENV === "development" && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) ||
+          /\.vercel\.app$/.test(origin) // Allow all Vercel deployments (previews and production)
         ) {
           callback(null, true); return;
         }
