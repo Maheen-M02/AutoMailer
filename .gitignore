@@ -41,3 +41,7 @@ dist-ssr
 
 # Temporary lead lists and CSVs
 *.csv
+
+# Vercel output and metadata
+.vercel/
+
