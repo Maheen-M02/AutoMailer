@@ -7,7 +7,8 @@
 
 import express, { type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
-import helmet from "helmet";
+import helmetModule from "helmet";
+const helmet = helmetModule as any;
 import { getEnv } from "./config/env.js";
 import { isAppError } from "./shared/errors.js";
 import { logger } from "./shared/logger.js";
@@ -39,7 +40,7 @@ export function createApp() {
 
   // ── Security Headers (Helmet) ───────────────────────────────────────────────
   app.use(
-    (helmet as any)({
+    helmet({
       contentSecurityPolicy: false, // Disable for API (no HTML)
       crossOriginEmbedderPolicy: false,
     })
