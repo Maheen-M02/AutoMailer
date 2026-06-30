@@ -45,3 +45,7 @@ dist-ssr
 # Vercel output and metadata
 .vercel/
 
+# Design reference video
+src/video.mp4
+src/video2.mp4
+
